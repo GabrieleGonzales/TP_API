@@ -16,12 +16,18 @@ let fileContent = []
 const readF = util.promisify(fs.readFile);
 const writeF = util.promisify(fs.writeFile);
 
+
 router.post('/createAccount', async function(request, response){
-    console.log(request.body);      // your JSON
     var jsonResponse = {};
 
     const parameters = {name: request.body.name, balance: request.body.balance}
-
+    const status = await validateParameters(parameters, 'Create')
+    if(status == false) {
+        jsonResponse.result = "err";
+        jsonResponse.body = "Houve falta de parametros";    
+        response.send(jsonResponse);
+        return
+    }
     const operationResult = await updateAccount(parameters, 'Create')
     
     jsonResponse.result = operationResult.status;
@@ -31,10 +37,19 @@ router.post('/createAccount', async function(request, response){
 });
 
 router.post('/deposit', async function(request, response){
-    console.log(request.body);      // your JSON
+    //console.log(request.body);      // your JSON
     var jsonResponse = {};
 
     const parameters = {id: request.body.id, balance: request.body.balance}
+
+    const status = await validateParameters(parameters, 'Put')
+    if(status == false) {
+        jsonResponse.result = "err";
+        jsonResponse.body = "Houve falta de parametros";    
+        response.send(jsonResponse);
+        return
+    }
+
 
     const operationResult = await updateAccount(parameters, 'Put')
     
@@ -46,10 +61,18 @@ router.post('/deposit', async function(request, response){
 
 
 router.post('/withdraw', async function(request, response){
-    console.log(request.body);      // your JSON
+    //console.log(request.body);      // your JSON
     var jsonResponse = {};
 
     const parameters = {id: request.body.id, balance: request.body.balance}
+
+    const status = await validateParameters(parameters, 'Push')
+    if(status == false) {
+        jsonResponse.result = "err";
+        jsonResponse.body = "Houve falta de parametros";    
+        response.send(jsonResponse);
+        return
+    }
 
     const operationResult = await updateAccount(parameters, 'Push')
     
@@ -62,9 +85,17 @@ router.post('/withdraw', async function(request, response){
 router.get('/checkBalance/:id', async function(request, response){
     //console.log(request.body);      // your JSON
     var jsonResponse = {};
-    const operationResult = await updateAccount({id: request.params.id}, 'GetInfo')
-    console.log(operationResult)
-    
+
+    const parameters = {id: request.params.id}
+    const status = await validateParameters(parameters, 'GetInfo')
+    if(status == false) {
+        jsonResponse.result = "err";
+        jsonResponse.body = "Houve falta de parametros";    
+        response.send(jsonResponse);
+        return
+    }
+
+    const operationResult = await updateAccount(parameters, 'GetInfo')
     jsonResponse.result = operationResult.status;
     jsonResponse.body = operationResult.msg;
 
@@ -74,7 +105,17 @@ router.get('/checkBalance/:id', async function(request, response){
 router.delete('/delete/:id', async function(request, response){
     //console.log(request.body);      // your JSON
     var jsonResponse = {};
-    const operationResult = await updateAccount({id: request.params.id}, 'Remove')
+
+    const parameters = {id: request.params.id}
+    const status = await validateParameters(parameters, 'Remove')
+    if(status == false) {
+        jsonResponse.result = "err";
+        jsonResponse.body = "Houve falta de parametros";    
+        response.send(jsonResponse);
+        return
+    }
+
+    const operationResult = await updateAccount(parameters, 'Remove')
     
     jsonResponse.result = operationResult.status;
     jsonResponse.body = operationResult.msg;
@@ -97,8 +138,6 @@ async function updateAccount(parameters, operation){
         case 'Put':
             userInfo = await getInfo(parameters.id)
             if(userInfo == null) return {status: 'err', msg: 'A conta não existe'}
-            console.log('here')
-            console.log(parameters)
             newBalance = userInfo.balance + parameters.balance
             newInfo = {id: parameters.id, balance: newBalance}
             returnResult = await changeInfo(newInfo, 'Put')
@@ -139,8 +178,6 @@ async function changeInfo(parameter, operation){
 
 async function getInfo(id){
     await readFileAccount()
-    console.log('FILE CONTENT : ')
-    console.log(fileContent)
     return fileContent.find(x => x.id == id)
 }
 
@@ -160,23 +197,44 @@ const readFileAccount = async filePath => {
       return 
     }
     catch(err) {
-        console.log('erro: ' + err)
         return {status: 'error', msg: 'Falha na leitura da base de dados'}
     }
   }
 
   const writeFileAccount = async newContent => {
     try {
-      console.log('AQUI')
-      console.log(newContent)
       let data = JSON.stringify(newContent, null, 2);
       const aux = await fs.promises.writeFile('accounts.json', data)
       return {status: 'ok', msg: 'Operação realizada com sucesso'}
     }
     catch(err) {
-        console.log('erro: ' + err)
         return {status: 'error', msg: 'Falha na leitura da base de dados'}
     }
+  }
+
+  async function validateParameters(parameters, operation) {
+    switch (operation){
+        case 'Create':
+            if(parameters.name == undefined || parameters.balance == undefined) return false 
+            return true
+            break
+        case 'Put':
+            if(parameters.id == undefined || parameters.balance == undefined) return false 
+            return true
+            break
+        case 'Push':
+            if(parameters.id == undefined || parameters.balance == undefined) return false 
+            return true
+            break
+        case 'Remove':
+            if(parameters.id == undefined) return false 
+            return true
+            break
+        case 'GetInfo':
+            if(parameters.id == undefined) return false 
+            return true
+            break
+    }  
   }
 
 module.exports = router;
